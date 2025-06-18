@@ -1,0 +1,6 @@
+dist/
+node_modules/
+publish/
+.env
+testsuite.txt
+todo.txt

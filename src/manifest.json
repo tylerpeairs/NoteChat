@@ -1,0 +1,16 @@
+{
+	"manifest_version": 1,
+	"id": "tyler.peairs.NoteChat",
+	"app_min_version": "3.3",
+	"version": "1.0.0",
+	"name": "Note Chat",
+	"description": "Chat with Your Notes using LLMs",
+	"author": "Tyler Peairs",
+	"homepage_url": "https://github.com/tylerpeairs/NoteChat",
+	"repository_url": "https://github.com/tylerpeairs/NoteChat.git",
+	"keywords": [],
+	"categories": [],
+	"screenshots": [],
+	"icons": {},
+	"promo_tile": {}
+}
