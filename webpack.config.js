@@ -198,6 +198,12 @@ const pluginConfig = { ...baseConfig, entry: './src/index.ts',
 		// https://github.com/joplin/plugin-bibtex/pull/2
 		extensions: ['.js', '.tsx', '.ts', '.json'],
 	},
+	externals: {
+		'node:fs': 'commonjs fs',
+		'fs': 'commonjs fs',
+		'node:path': 'commonjs path',
+		'path': 'commonjs path',
+	},
 	output: {
 		filename: 'index.js',
 		path: distDir,

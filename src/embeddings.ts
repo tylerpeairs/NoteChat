@@ -1,8 +1,31 @@
-import * as dotenv from "dotenv";
-dotenv.config();
-
-import { OpenAI } from "openai";
 import joplin from "api";
+import { Ollama } from "ollama";
+const ollama = new Ollama();
+
+/**
+ * Embed text via local Ollama all-minilm model.
+ */
+async function embedText(text: string): Promise<number[]> {
+  const resp = await ollama.embed({
+    model: "all-minilm:22m-l6-v2-fp16",
+    input: text.slice(0, MAX_CHARS),
+    truncate: true,
+  });
+  // Return the first embedding (for the single input)
+  return (resp.embeddings as number[][])[0];
+}
+
+/**
+ * Batch-embed an array of texts via Ollama.
+ */
+async function embedTextBatch(texts: string[]): Promise<number[][]> {
+  const resp = await ollama.embed({
+    model: "all-minilm:22m-l6-v2-fp16",
+    input: texts.map(t => t.slice(0, MAX_CHARS)),
+    truncate: true,
+  });
+  return resp.embeddings as number[][];
+}
 
 /**
  * In-memory vector index entry.
@@ -13,12 +36,6 @@ interface Entry {
   text: string;
   updatedTime: number;
 }
-
-// OpenAI client for embeddings
-const openai = new OpenAI({
-  apiKey: process.env.OPENAI_API_KEY,
-  dangerouslyAllowBrowser: true,
-});
 
 const MAX_CHARS = 2000;
 console.log(`Embeddings module loaded. MAX_CHARS =`, MAX_CHARS);
@@ -64,14 +81,15 @@ export async function reindexAll() {
       fields: ["id", "body", "updated_time"],
     });
     if (!items.length) break;
-    await Promise.all(items.map(async note => {
-      const text = note.body.slice(0, MAX_CHARS);
-      console.log(`reindexAll: embedding note ${note.id} (truncated to ${text.length} chars)`);
-      const resp = await openai.embeddings.create({
-        model: "text-embedding-3-small",
-        input: text,
-      });
-      const vec = normalize(resp.data[0].embedding);
+    // Prepare page texts truncated to MAX_CHARS
+    const texts = items.map(note => note.body.slice(0, MAX_CHARS));
+    console.log(`reindexAll: batch embedding ${texts.length} notes on page ${page}`);
+    const embeddings = await embedTextBatch(texts);
+    // Upsert each note with its corresponding embedding
+    embeddings.forEach((rawEmbedding, i) => {
+      const note = items[i];
+      console.log(`reindexAll: embedding received for note ${note.id}`);
+      const vec = normalize(rawEmbedding);
       index.push({
         id: note.id,
         embedding: vec,
@@ -79,7 +97,7 @@ export async function reindexAll() {
         updatedTime: note.updated_time,
       });
       console.log(`reindexAll: note ${note.id} indexed. Total entries = ${index.length}`);
-    }));
+    });
     console.log(`Indexed ${items.length} notes on page ${page}`);
     page++;
   }
@@ -95,11 +113,8 @@ export async function upsertNote(id: string) {
     fields: ["body", "updated_time"],
   });
   const text = respNote.body.slice(0, MAX_CHARS);
-  const resp = await openai.embeddings.create({
-    model: "text-embedding-3-small",
-    input: text,
-  });
-  const vec = normalize(resp.data[0].embedding);
+  const rawEmbedding = await embedText(text);
+  const vec = normalize(rawEmbedding);
   console.log(`upsertNote: embedding for note ${id} computed.`);
   const idx = index.findIndex(e => e.id === id);
   const entry = {
@@ -118,11 +133,8 @@ export async function upsertNote(id: string) {
  */
 export async function queryIndex(query: string, k = 5): Promise<string[]> {
   console.log(`queryIndex: querying for "${query}", top k = ${k}`);
-  const resp = await openai.embeddings.create({
-    model: "text-embedding-3-small",
-    input: query,
-  });
-  const qv = normalize(resp.data[0].embedding);
+  const rawEmbedding = await embedText(query);
+  const qv = normalize(rawEmbedding);
   console.log('queryIndex: query embedding normalized.');
   const scored = index.map(e => ({
     text: e.text,
