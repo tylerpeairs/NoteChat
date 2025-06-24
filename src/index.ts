@@ -1,13 +1,20 @@
 import joplin from 'api';
 import { createJournalPanel, registerPanelHandlers } from './panel';
-import { handleQuery } from "./chat";
 import { reindexAll, upsertNote, reconcileIndex } from "./embeddings";
-
-// Expose handleQuery for interactive testing in the plugin console
-(globalThis as any).handleQuery = handleQuery;
+import registerSettings from './settings';
 
 joplin.plugins.register({
   onStart: async () => {
+    // Register plugin settings
+    await registerSettings();
+
+    const openaiApiKey = await joplin.settings.value('openaiApiKey');
+    const useLocalModel = await joplin.settings.value('useLocalModel');
+
+    console.log('Settings:', { openaiApiKey: openaiApiKey ? '[REDACTED]' : '', useLocalModel });
+
+    (globalThis as any).NOTECHAT_SETTINGS = { openaiApiKey, useLocalModel, };
+
     // Perform an initial full index if the in-memory index is empty
     console.log('onStart: running initial reindexAll');
     await reindexAll();

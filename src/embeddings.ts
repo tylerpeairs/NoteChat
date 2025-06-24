@@ -1,6 +1,9 @@
 import joplin from "api";
 import { Ollama } from "ollama";
+import { OpenAI } from "openai";
 const ollama = new Ollama();
+
+export let currentProvider: 'openai' | 'ollama' | null = null;
 
 interface NoteMeta {
   id: string;
@@ -13,6 +16,11 @@ interface NoteMeta {
 interface FolderMeta {
   id: string;
   title: string;
+}
+
+interface CacheFile {
+  provider: 'openai' | 'ollama';
+  entries: Entry[];
 }
 
 const fs = require('fs').promises;
@@ -32,9 +40,18 @@ export async function loadCache(): Promise<boolean> {
   const cachePath = await getCachePath();
   try {
     const text = await fs.readFile(cachePath, "utf-8");
-    const data = JSON.parse(text) as Entry[];
+    const cacheObj = JSON.parse(text) as CacheFile;
+    // Check if provider has changed
+    const settings = await joplin.settings.values(['openaiApiKey','useLocalModel']) as any;
+    const useOpenAI = !!settings.openaiApiKey && !settings.useLocalModel;
+    if ((useOpenAI ? 'openai' : 'ollama') !== cacheObj.provider) {
+      console.log('loadCache: provider changed, discarding old cache');
+      return false;
+    }
+    const data = cacheObj.entries;
     index.length = 0;
     data.forEach(e => index.push(e));
+    currentProvider = cacheObj.provider;
     console.log(`Loaded index cache: ${index.length} entries`);
     return true;
   } catch {
@@ -47,33 +64,71 @@ export async function loadCache(): Promise<boolean> {
 async function saveCache(): Promise<void> {
   const cachePath = await getCachePath();
   await fs.mkdir(path.dirname(cachePath), { recursive: true });
-  await fs.writeFile(cachePath, JSON.stringify(index), "utf-8");
+  const settings = await joplin.settings.values(['openaiApiKey','useLocalModel']) as any;
+  const useOpenAI = !!settings.openaiApiKey && !settings.useLocalModel;
+  const cacheObj: CacheFile = {
+    provider: useOpenAI ? 'openai' : 'ollama',
+    entries: index,
+  };
+  await fs.writeFile(cachePath, JSON.stringify(cacheObj), "utf-8");
   console.log(`Saved index cache: ${index.length} entries`);
+  currentProvider = cacheObj.provider;
 }
 
 /**
- * Embed text via local Ollama all-minilm model.
+ * Embed text via OpenAI if API key is set, otherwise via Ollama.
  */
 async function embedText(text: string): Promise<number[]> {
-  const resp = await ollama.embed({
-    model: "all-minilm:22m-l6-v2-fp16",
-    input: text.slice(0, MAX_CHARS),
-    truncate: true,
-  });
-  // Return the first embedding (for the single input)
-  return (resp.embeddings as number[][])[0];
+  // Fetch current settings
+  const { openaiApiKey, useLocalModel } = (await joplin.settings.values(['openaiApiKey','useLocalModel'])) as any;
+  console.log(`embedText: settings: openaiApiKeySet=${!!openaiApiKey}, useLocalModel=${useLocalModel}`);
+  const openaiClient = openaiApiKey && !useLocalModel
+    ? new OpenAI({ apiKey: openaiApiKey, dangerouslyAllowBrowser: true })
+    : null;
+  const useOpenAI = !!openaiClient;
+  console.log('embedText: using', useOpenAI ? 'OpenAI' : 'Ollama', 'for embeddings');
+  if (useOpenAI && openaiClient) {
+    const resp = await openaiClient.embeddings.create({
+      model: "text-embedding-3-small",
+      input: text,
+    });
+    return normalize(resp.data[0].embedding);
+  } else {
+    const resp = await ollama.embed({
+      model: "all-minilm:22m-l6-v2-fp16",
+      input: text.slice(0, MAX_CHARS),
+      truncate: true,
+    });
+    // Ollama returns embeddings array of arrays; single input gives [[...]]
+    return normalize((resp.embeddings as number[][])[0]);
+  }
 }
 
 /**
- * Batch-embed an array of texts via Ollama.
+ * Batch-embed an array of texts via OpenAI if API key is set, otherwise via Ollama.
  */
 async function embedTextBatch(texts: string[]): Promise<number[][]> {
-  const resp = await ollama.embed({
-    model: "all-minilm:22m-l6-v2-fp16",
-    input: texts.map(t => t.slice(0, MAX_CHARS)),
-    truncate: true,
-  });
-  return resp.embeddings as number[][];
+  const { openaiApiKey, useLocalModel } = (await joplin.settings.values(['openaiApiKey','useLocalModel'])) as any;
+  console.log(`embedTextBatch: settings: openaiApiKeySet=${!!openaiApiKey}, useLocalModel=${useLocalModel}`);
+  const openaiClient = openaiApiKey && !useLocalModel
+    ? new OpenAI({ apiKey: openaiApiKey, dangerouslyAllowBrowser: true })
+    : null;
+  const useOpenAI = !!openaiClient;
+  console.log('embedTextBatch: using', useOpenAI ? 'OpenAI' : 'Ollama', 'for batch embeddings');
+  if (useOpenAI && openaiClient) {
+    const resp = await openaiClient.embeddings.create({
+      model: "text-embedding-3-small",
+      input: texts,
+    });
+    return resp.data.map(e => normalize(e.embedding));
+  } else {
+    const resp = await ollama.embed({
+      model: "all-minilm:22m-l6-v2-fp16",
+      input: texts.map(t => t.slice(0, MAX_CHARS)),
+      truncate: true,
+    });
+    return (resp.embeddings as number[][]).map(v => normalize(v));
+  }
 }
 
 /**
@@ -174,6 +229,15 @@ export async function reindexAll() {
  * Upsert a single note into the index on change.
  */
 export async function upsertNote(id: string) {
+  // Check if embedding provider has changed; if so, trigger full reindex
+  const settings = await joplin.settings.values(['openaiApiKey','useLocalModel']) as any;
+  const desiredProvider = (!!settings.openaiApiKey && !settings.useLocalModel) ? 'openai' : 'ollama';
+  if (currentProvider && currentProvider !== desiredProvider) {
+    console.log(`upsertNote: provider changed from ${currentProvider} to ${desiredProvider}, running full reindex`);
+    await reindexAll();
+    return;
+  }
+
   console.log(`upsertNote: received change event for note ${id}`);
   const respNote = (await joplin.data.get(["notes", id], {
     fields: ["title", "body", "updated_time", "parent_id"],

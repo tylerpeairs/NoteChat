@@ -47,7 +47,7 @@ These commands download and cache the models in `~/.ollama`.
 3. Start the Ollama server:
 
    ```bash
-   ollama serve --threads 4
+   ollama serve
    ```
 
 4. In Joplin, open the **Journal Assistant** panel (via **View → Toggle Plugin Panel**).
