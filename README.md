@@ -64,10 +64,6 @@ These commands download and cache the models in `~/.ollama`.
   - Check panel WebView console for errors.
   - Verify models are pulled: `ollama list`.
 
-- **Slow Indexing**  
-  - Adjust `Batch Size` in settings.
-  - Increase Ollama server threads: `ollama serve --threads 8`.
-
 - **Cache Issues**  
   - Remove plugin data directory:  
     ```bash

@@ -2,6 +2,19 @@ import joplin from "api";
 import { Ollama } from "ollama";
 const ollama = new Ollama();
 
+interface NoteMeta {
+  id: string;
+  title: string;
+  body: string;
+  updated_time: number;
+  parent_id: string;
+}
+
+interface FolderMeta {
+  id: string;
+  title: string;
+}
+
 const fs = require('fs').promises;
 const path = require('path');
 
@@ -115,14 +128,26 @@ export async function reindexAll() {
   while (true) {
     console.log(`reindexAll: current index size = ${index.length}`);
     console.log(`Fetching page ${page}`);
-    const { items } = await joplin.data.get(["notes"], {
+    const { items } = (await joplin.data.get(["notes"], {
       page,
       limit: 50,
-      fields: ["id", "body", "updated_time"],
-    });
+      fields: ["id", "title", "body", "updated_time", "parent_id"],
+    })) as { items: NoteMeta[] };
     if (!items.length) break;
-    // Prepare page texts truncated to MAX_CHARS
-    const texts = items.map(note => note.body.slice(0, MAX_CHARS));
+    // Fetch folder titles for this page of notes
+    const folderIds = Array.from(new Set(items.map(n => n.parent_id)));
+    const folders = await Promise.all(folderIds.map(async id =>
+      (await joplin.data.get(["folders", id], { fields: ["id", "title"] })) as FolderMeta
+    ));
+    const folderMap = new Map(
+      folders.map(f => [String((f as any).id), String((f as any).title)])
+    );
+    // Prepare page texts truncated to MAX_CHARS, including folder title, title and body
+    const texts = items.map(note => {
+      const folderTitle = folderMap.get(note.parent_id) || "";
+      const combined = `${folderTitle} > ${note.title}\n\n${note.body}`;
+      return combined.slice(0, MAX_CHARS);
+    });
     console.log(`reindexAll: batch embedding ${texts.length} notes on page ${page}`);
     const embeddings = await embedTextBatch(texts);
     // Upsert each note with its corresponding embedding
@@ -133,7 +158,7 @@ export async function reindexAll() {
       index.push({
         id: note.id,
         embedding: vec,
-        text: note.body,
+        text: `${folderMap.get(note.parent_id) || ""} > ${note.title}\n\n${note.body}`,
         updatedTime: note.updated_time,
       });
       console.log(`reindexAll: note ${note.id} indexed. Total entries = ${index.length}`);
@@ -150,10 +175,13 @@ export async function reindexAll() {
  */
 export async function upsertNote(id: string) {
   console.log(`upsertNote: received change event for note ${id}`);
-  const respNote = await joplin.data.get(["notes", id], {
-    fields: ["body", "updated_time"],
-  });
-  const text = respNote.body.slice(0, MAX_CHARS);
+  const respNote = (await joplin.data.get(["notes", id], {
+    fields: ["title", "body", "updated_time", "parent_id"],
+  })) as NoteMeta;
+  const folder = await joplin.data.get(["folders", respNote.parent_id], { fields: ["title"] });
+  const folderTitle = folder.title;
+  const combined = `${folderTitle} > ${respNote.title}\n\n${respNote.body}`;
+  const text = combined.slice(0, MAX_CHARS);
   const rawEmbedding = await embedText(text);
   const vec = normalize(rawEmbedding);
   console.log(`upsertNote: embedding for note ${id} computed.`);
@@ -161,7 +189,7 @@ export async function upsertNote(id: string) {
   const entry = {
     id,
     embedding: vec,
-    text: respNote.body,
+    text: combined,
     updatedTime: respNote.updated_time,
   };
   if (idx >= 0) index[idx] = entry;
@@ -185,4 +213,35 @@ export async function queryIndex(query: string, k = 5): Promise<string[]> {
   scored.sort((a, b) => b.score - a.score);
   console.log(`queryIndex: returning ${Math.min(k, index.length)} results`);
   return scored.slice(0, k).map(s => s.text);
+}
+
+/**
+ * Reconcile the in-memory index against existing notes, removing entries for deleted notes.
+ */
+export async function reconcileIndex(): Promise<void> {
+  console.log('reconcileIndex: fetching all note IDs from Joplin');
+  const allIds = new Set<string>();
+  let page = 1;
+  while (true) {
+    const { items } = (await joplin.data.get(['notes'], {
+      page,
+      limit: 100,
+      fields: ['id'],
+    })) as { items: { id: string }[] };
+    if (!items.length) break;
+    items.forEach(n => allIds.add(n.id));
+    page++;
+  }
+  const beforeCount = index.length;
+  // Filter out entries whose note no longer exists
+  for (let i = index.length - 1; i >= 0; i--) {
+    if (!allIds.has(index[i].id)) {
+      console.log(`reconcileIndex: removing missing note ${index[i].id}`);
+      index.splice(i, 1);
+    }
+  }
+  const afterCount = index.length;
+  console.log(`reconcileIndex: pruned ${beforeCount - afterCount} entries; ${afterCount} remain`);
+  // Save updated index to cache
+  await saveCache();
 }
