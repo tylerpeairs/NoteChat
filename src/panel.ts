@@ -63,6 +63,9 @@ export async function createJournalPanel(panelId: string) {
     <div id="journal-panel-body">
       <textarea id="journal-query" placeholder="Ask a question..."></textarea>
       <button id="journal-send">Send</button>
+      <div id="journal-loading" style="display:none; padding:4px; font-style:italic;">
+        Loading…
+      </div>
       <pre id="journal-output"></pre>
     </div>
   </div>

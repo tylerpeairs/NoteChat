@@ -1,6 +1,6 @@
 import { OpenAI } from "openai";
 import { Ollama } from "ollama";
-import { queryIndex, reindexAll, currentProvider } from "./embeddings";
+import { queryIndex, reindexAll, currentProvider, syncChangedNotes } from "./embeddings";
 import joplin from "api";
 
 const ollama = new Ollama();
@@ -20,6 +20,8 @@ export async function handleQuery(question: string): Promise<string> {
         console.log(`handleQuery: embedding provider changed from ${currentProvider} to ${desiredProvider}, running full reindex`);
         await reindexAll();
       }
+      console.log('handleQuery: syncing changed notes before query');
+      await syncChangedNotes();
       // Query the in-memory index for the top 5 related notes
       const snippets = await queryIndex(question, 5);
 

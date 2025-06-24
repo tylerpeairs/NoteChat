@@ -21,12 +21,6 @@ joplin.plugins.register({
     console.log('onStart: reconciling index with current notes');
     await reconcileIndex();
 
-    // Keep the in-memory index up to date on note changes
-    joplin.workspace.onNoteChange(async (event) => {
-      console.log('Event: note changed', event.id);
-      await upsertNote(event.id);
-    });
-
     // Register power-user commands
     await joplin.commands.register({
       name: 'notechat.reindexAllNotes',

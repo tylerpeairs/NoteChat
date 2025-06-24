@@ -5,6 +5,9 @@ const ollama = new Ollama();
 
 export let currentProvider: 'openai' | 'ollama' | null = null;
 
+// Track last indexed update times per note
+export const lastIndexedMap: Map<string, number> = new Map();
+
 interface NoteMeta {
   id: string;
   title: string;
@@ -52,6 +55,11 @@ export async function loadCache(): Promise<boolean> {
     index.length = 0;
     data.forEach(e => index.push(e));
     currentProvider = cacheObj.provider;
+    // Populate lastIndexedMap from cached entries
+    lastIndexedMap.clear();
+    cacheObj.entries.forEach(e => {
+      lastIndexedMap.set(e.id, e.updatedTime);
+    });
     console.log(`Loaded index cache: ${index.length} entries`);
     return true;
   } catch {
@@ -308,4 +316,80 @@ export async function reconcileIndex(): Promise<void> {
   console.log(`reconcileIndex: pruned ${beforeCount - afterCount} entries; ${afterCount} remain`);
   // Save updated index to cache
   await saveCache();
+}
+/**
+ * Sync changed or new notes by comparing updated_time to lastIndexedMap,
+ * batch-embedding only those notes.
+ */
+export async function syncChangedNotes(): Promise<void> {
+  console.log('syncChangedNotes: checking for new or updated notes');
+  const changedIds: string[] = [];
+  let page = 1;
+
+  // 1. Collect note IDs whose updated_time is newer or missing
+  while (true) {
+    const { items } = (await joplin.data.get(['notes'], {
+      page,
+      limit: 100,
+      fields: ['id', 'updated_time', 'title', 'body', 'parent_id'],
+    })) as { items: NoteMeta[] };
+    if (!items.length) break;
+    items.forEach(n => {
+      const lastTime = lastIndexedMap.get(n.id) || 0;
+      if (n.updated_time > lastTime) {
+        changedIds.push(n.id);
+      }
+    });
+    page++;
+  }
+
+  if (!changedIds.length) {
+    console.log('syncChangedNotes: no notes to sync');
+    return;
+  }
+
+  console.log(`syncChangedNotes: found ${changedIds.length} changed notes`);
+
+  // 2. Fetch full note details for changed IDs
+  const notes = await Promise.all(changedIds.map(async id =>
+    await joplin.data.get(['notes', id], {
+      fields: ['id', 'title', 'body', 'updated_time', 'parent_id'],
+    }) as Promise<NoteMeta>
+  ));
+
+  // 3. Fetch folder titles for grouping
+  const folderIds = Array.from(new Set(notes.map(n => n.parent_id)));
+  const folders = await Promise.all(folderIds.map(async id =>
+    await joplin.data.get(['folders', id], { fields: ['id', 'title'] }) as Promise<FolderMeta>
+  ));
+  const folderMap = new Map(folders.map(f => [f.id, f.title]));
+
+  // 4. Prepare texts for embedding
+  const texts = notes.map(n => {
+    const folderTitle = folderMap.get(n.parent_id) || '';
+    return `${folderTitle} > ${n.title}\n\n${n.body}`.slice(0, MAX_CHARS);
+  });
+
+  console.log('syncChangedNotes: batch embedding changed notes');
+  const embeddings = await embedTextBatch(texts);
+
+  // 5. Upsert each changed note into index and update map
+  embeddings.forEach((vec, i) => {
+    const note = notes[i];
+    const entry = {
+      id: note.id,
+      embedding: normalize(vec),
+      text: `${folderMap.get(note.parent_id) || ''} > ${note.title}\n\n${note.body}`,
+      updatedTime: note.updated_time,
+    };
+    const idx = index.findIndex(e => e.id === note.id);
+    if (idx >= 0) index[idx] = entry;
+    else index.push(entry);
+    lastIndexedMap.set(note.id, note.updated_time);
+    console.log(`syncChangedNotes: upserted note ${note.id}`);
+  });
+
+  // 6. Persist cache
+  await saveCache();
+  console.log('syncChangedNotes: sync complete');
 }
