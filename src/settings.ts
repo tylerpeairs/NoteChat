@@ -1,6 +1,6 @@
 import joplin from 'api';
 import { SettingItemType } from 'api/types';
-import { reindexAll } from './embeddings';
+import { reindexAll } from './embeddingService';
 
 export default async function registerSettings() {
   // Create a new section for NoteChat settings

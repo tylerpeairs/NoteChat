@@ -1,7 +1,7 @@
 import joplin from 'api';
 import { createJournalPanel, registerPanelHandlers } from './panel';
-import { reindexAll, upsertNote, reconcileIndex } from "./embeddings";
 import registerSettings from './settings';
+import { reindexAll, syncIndex } from './embeddingService';
 
 joplin.plugins.register({
   onStart: async () => {
@@ -14,12 +14,6 @@ joplin.plugins.register({
     console.log('Settings:', { openaiApiKey: openaiApiKey ? '[REDACTED]' : '', useLocalModel });
 
     (globalThis as any).NOTECHAT_SETTINGS = { openaiApiKey, useLocalModel, };
-
-    // Perform an initial full index if the in-memory index is empty
-    console.log('onStart: running initial reindexAll');
-    await reindexAll();
-    console.log('onStart: reconciling index with current notes');
-    await reconcileIndex();
 
     // Register power-user commands
     await joplin.commands.register({
@@ -35,7 +29,7 @@ joplin.plugins.register({
       label: 'NoteChat: Reconcile Index',
       execute: async () => {
         console.log('Command: Reconcile Index invoked');
-        await reconcileIndex();
+        await syncIndex();
       },
     });
 
