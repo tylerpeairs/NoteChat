@@ -2,6 +2,42 @@ import joplin from "api";
 import { Ollama } from "ollama";
 const ollama = new Ollama();
 
+const fs = require('fs').promises;
+const path = require('path');
+
+// Path to cache file
+const CACHE_FILENAME = "index-cache.json";
+
+// Compute full cache path in plugin data directory
+async function getCachePath(): Promise<string> {
+  const dataDir = await joplin.plugins.dataDir();
+  return `${dataDir}/${CACHE_FILENAME}`;
+}
+
+// Load cache into memory; return true if loaded, false otherwise
+export async function loadCache(): Promise<boolean> {
+  const cachePath = await getCachePath();
+  try {
+    const text = await fs.readFile(cachePath, "utf-8");
+    const data = JSON.parse(text) as Entry[];
+    index.length = 0;
+    data.forEach(e => index.push(e));
+    console.log(`Loaded index cache: ${index.length} entries`);
+    return true;
+  } catch {
+    console.log("No cache found, full reindex needed");
+    return false;
+  }
+}
+
+// Save current in-memory index to cache
+async function saveCache(): Promise<void> {
+  const cachePath = await getCachePath();
+  await fs.mkdir(path.dirname(cachePath), { recursive: true });
+  await fs.writeFile(cachePath, JSON.stringify(index), "utf-8");
+  console.log(`Saved index cache: ${index.length} entries`);
+}
+
 /**
  * Embed text via local Ollama all-minilm model.
  */
@@ -68,6 +104,10 @@ function cosine(a: number[], b: number[]): number {
  * Full reindex: fetches all notes, embeds up to MAX_CHARS, and populates the index.
  */
 export async function reindexAll() {
+  if (await loadCache()) {
+    console.log("reindexAll: using cached index");
+    return;
+  }
   index.length = 0;
   console.log('reindexAll: Clearing in-memory index and starting full reindex.');
   let page = 1;
@@ -102,6 +142,7 @@ export async function reindexAll() {
     page++;
   }
   console.log(`Reindex complete: ${page - 1} pages processed`);
+  await saveCache();
 }
 
 /**
@@ -126,6 +167,7 @@ export async function upsertNote(id: string) {
   if (idx >= 0) index[idx] = entry;
   else index.push(entry);
   console.log(`upsertNote: note ${id} upserted. Index size now = ${index.length}`);
+  await saveCache();
 }
 
 /**

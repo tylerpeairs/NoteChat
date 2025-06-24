@@ -12,8 +12,8 @@ joplin.plugins.register({
     console.log('onStart: running initial reindexAll');
     await reindexAll();
 
-    // Keep the in-memory index up to date on note changes and deletions
-    await joplin.workspace.onNoteChange(async (event) => {
+    // Keep the in-memory index up to date on note changes
+    joplin.workspace.onNoteChange(async (event) => {
       console.log('Event: note changed', event.id);
       await upsertNote(event.id);
     });
