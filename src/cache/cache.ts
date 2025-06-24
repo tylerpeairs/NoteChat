@@ -1,5 +1,5 @@
 import joplin from "api";
-import { Entry, CacheFile } from "./interfaces";
+import { Entry, CacheFile } from "../models/interfaces";
 const fs = require("fs").promises;
 const path = require("path");
 

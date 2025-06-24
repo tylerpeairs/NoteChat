@@ -1,5 +1,5 @@
 import joplin from 'api';
-import { handleQuery } from "./chat";
+import { handleQuery } from "../ai/chat";
 
 export async function createJournalPanel(panelId: string) {
   console.log('createJournalPanel: initializing panel creation');

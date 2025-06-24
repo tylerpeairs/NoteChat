@@ -1,7 +1,7 @@
 import { OpenAI } from "openai";
 import { Ollama } from "ollama";
 import { queryIndex, reindexAll, syncIndex } from "./embeddingService";
-import { currentProvider } from "./cache";
+import { currentProvider } from "../cache/cache";
 import joplin from "api";
 
 const ollama = new Ollama();

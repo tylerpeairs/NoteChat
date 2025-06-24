@@ -1,9 +1,9 @@
 import joplin from 'api';
-import { createJournalPanel, registerPanelHandlers } from './panel';
+import { createJournalPanel, registerPanelHandlers } from './ui/panel';
 import registerSettings from './settings';
-import { reindexAll, syncIndex } from './embeddingService';
+import { reindexAll, syncIndex } from './ai/embeddingService';
 
-joplin.plugins.register({
+(joplin.plugins as any).register({
   onStart: async () => {
     // Register plugin settings
     await registerSettings();

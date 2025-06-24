@@ -1,23 +1,12 @@
 import joplin from "api";
 import { OpenAI } from "openai";
 import { Ollama } from "ollama";
-import { normalize } from "./utils/math";
+import { normalize } from "../models/math";
 
 const ollama = new Ollama();
 
 const MAX_CHARS = 2000;
 console.log(`Embeddings module loaded. MAX_CHARS =`, MAX_CHARS);
-
-/**
- * Determine whether to use OpenAI based on user settings.
- */
-async function shouldUseOpenAI(): Promise<boolean> {
-  const { openaiApiKey, useLocalModel } = (await joplin.settings.values([
-    "openaiApiKey",
-    "useLocalModel",
-  ])) as any;
-  return !!openaiApiKey && !useLocalModel;
-}
 
 export async function embedText(text: string): Promise<number[]> {
   // Fetch current settings
