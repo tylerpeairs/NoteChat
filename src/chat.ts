@@ -1,16 +1,10 @@
 import * as dotenv from "dotenv";
 dotenv.config();
 
+import { Ollama } from "ollama";
 import { queryIndex } from "./embeddings";
-import { OpenAI } from "openai";
 
-/**
- * Initialize the OpenAI client for chat interactions.
- */
-const openai = new OpenAI({
-  apiKey: process.env.OPENAI_API_KEY,
-  dangerouslyAllowBrowser: true
-});
+const ollama = new Ollama();
 
 export async function handleQuery(question: string): Promise<string> {
 
@@ -24,13 +18,12 @@ export async function handleQuery(question: string): Promise<string> {
       const context = fullContext;
 
       // Ask the LLM using RAG prompt
-      const chatResp = await openai.chat.completions.create({
-        model: "gpt-4o-mini",
+      const resp = await ollama.chat({
+        model: "llama3.2:1b",
         messages: [
           { role: "system", content: "You are a helpful journal assistant. Use the notes provided to answer the question." },
           { role: "user", content: `Notes:\n${context}\n\nQuestion: ${question}` },
-        ],
+        ]
       });
-      
-      return chatResp.choices[0].message.content;
+      return resp.message.content;
 }
