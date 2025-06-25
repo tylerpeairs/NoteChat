@@ -36,3 +36,20 @@ export interface CacheFile {
   provider: 'openai' | 'ollama';
   entries: Entry[];
 }
+
+/**
+ * A single chat message in the in-session history.
+ */
+export interface ChatMessage {
+  /** Who sent the message */
+  role: 'user' | 'assistant';
+  /** The message content */
+  content: string;
+  /** Unix timestamp in milliseconds when the message was added */
+  timestamp: number;
+}
+
+/**
+ * The chat history within a session.
+ */
+export type ChatHistory = ChatMessage[];

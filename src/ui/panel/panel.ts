@@ -1,5 +1,5 @@
 import joplin from 'api';
-import { handleQuery } from "../ai/chat";
+import { handleQuery } from "../../ai/chatCompletion";
 
 export async function createJournalPanel(panelId: string) {
   console.log('createJournalPanel: initializing panel creation');
@@ -56,6 +56,7 @@ export async function createJournalPanel(panelId: string) {
       color: var(--text-color);
       border: 1px solid var(--margin-color);
       padding: 4px;
+      overflow-y: auto;
     }
   </style>
   <div id="journal-panel">

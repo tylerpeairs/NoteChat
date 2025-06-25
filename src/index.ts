@@ -1,5 +1,5 @@
 import joplin from 'api';
-import { createJournalPanel, registerPanelHandlers } from './ui/panel';
+import { createJournalPanel, registerPanelHandlers } from './ui/panel/panel';
 import registerSettings from './settings';
 import { reindexAll, syncIndex } from './ai/embeddingService';
 
