@@ -28,8 +28,7 @@ export async function handleQuery(question: string): Promise<string> {
     await syncIndex();
     console.log('chatCompletion: sync complete, querying index');
 
-    // Add the question to the chat history
-    addMessage("user", question);
+
     console.log('chatCompletion: added user message to history', question);
 
     // Query the in-memory index for the top 5 related notes
@@ -57,7 +56,7 @@ export async function handleQuery(question: string): Promise<string> {
     } else {
       // Build messages for Ollama (can be plain objects)
       const messages = [
-        { role: "system", content: "You are a helpful journal assistant..." },
+        { role: "system", content: "You are a helpful journal assistant. Use the notes provided to answer the question." },
         ...serializeHistory(),
         { role: "user", content: `Notes:\n${context}\n\nQuestion: ${question}` },
       ];
@@ -69,11 +68,13 @@ export async function handleQuery(question: string): Promise<string> {
       answer = resp.message.content;
       console.log('chatCompletion: Ollama answer', answer);
     }
-
+    // Add the question & answer to the chat history
+    addMessage("user", question);
     addMessage("assistant", answer);
-    console.log('chatCompletion: added assistant message, history length now', serializeHistory().length);
+    console.log('chatCompletion: added user & assistant message, history length now', serializeHistory().length);
+
     const formatted = formatHistory();
-    console.log('chatCompletion: returning formatted history', formatted);
+    console.log('chatCompletion: returning string-formatted history', formatted);
     return formatted;
   } catch (error) {
     console.error('handleQuery: unexpected error', error);
