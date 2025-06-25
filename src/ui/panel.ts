@@ -1,5 +1,5 @@
 import joplin from 'api';
-import { handleQuery } from "../../ai/chatCompletion";
+import { handleQuery } from "../ai/chatCompletion";
 
 export async function createJournalPanel(panelId: string) {
   console.log('createJournalPanel: initializing panel creation');
@@ -83,9 +83,8 @@ export async function registerPanelHandlers(panel: string) {
   await joplin.views.panels.onMessage(panel, async message => {
     console.log('registerPanelHandlers: message received from panel', message);
     if (message.type === 'query') {
-      // Pass the query text to the chat module and return its response
       const result = await handleQuery(message.text);
-      console.log('registerPanelHandlers: handleQuery returned', result);
+      console.log('registerPanelHandlers: returning result', result);
       return result;
     }
   });

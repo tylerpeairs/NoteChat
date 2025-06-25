@@ -2,14 +2,14 @@ import { OpenAI } from "openai";
 import { Ollama } from "ollama";
 import { queryIndex, reindexAll, syncIndex } from "./embeddingService";
 import { currentProvider } from "../cache/cache";
-import { addMessage, serializeHistory, getHistory } from "./chatHelper";
+import { addMessage, serializeHistory, formatHistory } from "./chatHelper";
 import joplin from "api";
 import { ChatCompletionMessageParam } from "openai/resources/chat/completions";
 import { ChatMessage } from "../models/interfaces";
 
 const ollama = new Ollama();
 
-export async function handleQuery(question: string): Promise<{ answer: string; history: ChatMessage[] }> {
+export async function handleQuery(question: string): Promise<string> {
   try {
     // Fetch latest settings
     const { openaiApiKey, useLocalModel } = await joplin.settings.values(['openaiApiKey', 'useLocalModel']) as any;
@@ -72,8 +72,9 @@ export async function handleQuery(question: string): Promise<{ answer: string; h
 
     addMessage("assistant", answer);
     console.log('chatCompletion: added assistant message, history length now', serializeHistory().length);
-    const fullHistory = getHistory();
-    return { answer, history: fullHistory };
+    const formatted = formatHistory();
+    console.log('chatCompletion: returning formatted history', formatted);
+    return formatted;
   } catch (error) {
     console.error('handleQuery: unexpected error', error);
     throw error;
