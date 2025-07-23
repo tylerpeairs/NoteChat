@@ -1,5 +1,4 @@
 import { OpenAI } from "openai";
-import { Ollama } from "ollama";
 import { queryIndex, reindexAll, syncIndex } from "./embeddingService";
 import { currentProvider } from "../cache/cache";
 import { addMessage, serializeHistory, formatHistory } from "./chatHelper";
@@ -7,19 +6,13 @@ import joplin from "api";
 import { ChatCompletionMessageParam } from "openai/resources/chat/completions";
 import { ChatMessage } from "../models/interfaces";
 
-const ollama = new Ollama();
-
 export async function handleQuery(question: string): Promise<string> {
   try {
     // Fetch latest settings
-    const { openaiApiKey, useLocalModel } = await joplin.settings.values(['openaiApiKey', 'useLocalModel']) as any;
-    console.log(`handleQuery: settings openaiApiKeySet=${!!openaiApiKey}, useLocalModel=${useLocalModel}`);
-    const openaiClient = openaiApiKey && !useLocalModel
-      ? new OpenAI({ apiKey: openaiApiKey, dangerouslyAllowBrowser: true })
-      : null;
-    const useOpenAI = !!openaiClient;
-    console.log(`handleQuery: using ${useOpenAI ? 'OpenAI' : 'Ollama'} for chat completion`);
-    const desiredProvider = useOpenAI ? 'openai' : 'ollama';
+    const { openaiApiKey, lambdaApiKey } =
+      await joplin.settings.values(['openaiApiKey', 'lambdaApiKey']) as any;
+    console.log(`handleQuery: settings openaiApiKeySet=${!!openaiApiKey}, lambdaApiKeySet=${!!lambdaApiKey}`);
+    const desiredProvider = !!openaiApiKey ? 'openai' : 'lambda';
     if (currentProvider && currentProvider !== desiredProvider) {
       console.log(`handleQuery: embedding provider changed from ${currentProvider} to ${desiredProvider}, running full reindex`);
       await reindexAll();
@@ -39,8 +32,29 @@ export async function handleQuery(question: string): Promise<string> {
 
     let answer: string;
 
-    if (useOpenAI && openaiClient) {
+    // Lambda Inference API branch
+    if (lambdaApiKey) {
+      console.log('chatCompletion: using Lambda Inference API for chat completion');
+      const lambdaClient = new OpenAI({
+        apiKey: lambdaApiKey,
+        baseURL: 'https://api.lambda.ai/v1',
+        dangerouslyAllowBrowser: true,
+      });
+      const messages = [
+        { role: 'system', content: 'You are a helpful journal assistant. Use the notes provided to answer the question.' },
+        ...serializeHistory(),
+        { role: 'user', content: `Notes:\n${context}\n\nQuestion: ${question}` },
+      ];
+      console.log('chatCompletion: Lambda messages', messages);
+      const chatResp = await lambdaClient.chat.completions.create({
+        model: 'llama3.1-8b-instruct',
+        messages: messages as ChatCompletionMessageParam[],
+      });
+      answer = chatResp.choices[0].message.content;
+      console.log('chatCompletion: Lambda answer', answer);
+    } else if (openaiApiKey) {
       // Build messages for OpenAI
+      const openaiClient = new OpenAI({ apiKey: openaiApiKey, dangerouslyAllowBrowser: true });
       const messages: ChatCompletionMessageParam[] = [
         { role: "system", content: "You are a helpful journal assistant. Use the notes provided to answer the question." },
         ...serializeHistory(),
@@ -54,19 +68,7 @@ export async function handleQuery(question: string): Promise<string> {
       answer = chatResp.choices[0].message.content;
       console.log('chatCompletion: OpenAI answer', answer);
     } else {
-      // Build messages for Ollama (can be plain objects)
-      const messages = [
-        { role: "system", content: "You are a helpful journal assistant. Use the notes provided to answer the question." },
-        ...serializeHistory(),
-        { role: "user", content: `Notes:\n${context}\n\nQuestion: ${question}` },
-      ];
-      console.log('chatCompletion: Ollama messages', messages);
-      const resp = await ollama.chat({
-        model: "llama3.2:1b",
-        messages: messages,
-      });
-      answer = resp.message.content;
-      console.log('chatCompletion: Ollama answer', answer);
+      throw new Error('Please configure either Lambda API key or OpenAI API key.');
     }
     // Add the question & answer to the chat history
     addMessage("user", question);

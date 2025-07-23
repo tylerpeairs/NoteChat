@@ -5,7 +5,7 @@ const path = require("path");
 
 
 // In-memory state
-export let currentProvider: "openai" | "ollama" | null = null;
+export let currentProvider: "openai" | "lambda" | null = null;
 export const lastIndexedMap: Map<string, number> = new Map();
 
 // Constants
@@ -25,12 +25,12 @@ export async function loadCache(): Promise<boolean> {
     const cacheObj = JSON.parse(text) as CacheFile;
 
     // Determine desired provider from settings
-    const { openaiApiKey, useLocalModel } = (await joplin.settings.values([
+    const { openaiApiKey, lambdaApiKey } = (await joplin.settings.values([
       "openaiApiKey",
-      "useLocalModel",
+      "lambdaApiKey",
     ])) as any;
-    const useOpenAI = !!openaiApiKey && !useLocalModel;
-    const desired = useOpenAI ? "openai" : "ollama";
+    const useOpenAI = !!openaiApiKey;
+    const desired = useOpenAI ? "openai" : "lambda";
 
     if (cacheObj.provider !== desired) {
       console.log("cache: provider changed, invalidating cache");
@@ -55,12 +55,12 @@ export async function saveCache(entries: Entry[]): Promise<void> {
   await fs.mkdir(path.dirname(cachePath), { recursive: true });
 
   // Determine provider
-  const { openaiApiKey, useLocalModel } = (await joplin.settings.values([
+  const { openaiApiKey, lambdaApiKey } = (await joplin.settings.values([
     "openaiApiKey",
-    "useLocalModel",
+    "lambdaApiKey",
   ])) as any;
-  const useOpenAI = !!openaiApiKey && !useLocalModel;
-  const provider: CacheFile["provider"] = useOpenAI ? "openai" : "ollama";
+  const useOpenAI = !!openaiApiKey;
+  const provider: CacheFile["provider"] = useOpenAI ? "openai" : "lambda";
 
   const cacheObj: CacheFile = {
     provider,

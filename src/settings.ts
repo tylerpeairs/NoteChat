@@ -19,31 +19,30 @@ export default async function registerSettings() {
       label: 'OpenAI API Key',
       description: 'Your secret OpenAI API key for remote chat completions.',
     },
-    useLocalModel: {
-      value: true,
-      type: SettingItemType.Bool,
+    lambdaApiKey: {
+      value: '',
+      type: SettingItemType.String,
       section: 'noteChatSection',
       public: true,
-      label: 'Use Local Model',
-      description: 'If enabled and Ollama is running, use local Ollama models for embeddings and chat.',
+      label: 'Lambda Labs API Key',
+      description: 'Your Lambda Labs API key for remote Sonnet inference.',
     },
   });
 
-  // Prevent enabling local model without an OpenAI key
+  // Validate settings on change
   joplin.settings.onChange(async () => {
-    const useLocal = await joplin.settings.value('useLocalModel');
-    const key      = await joplin.settings.value('openaiApiKey');
-    if (!useLocal && !key) {
-      // Revert the toggle
-      await joplin.settings.setValue('useLocalModel', true);
-      // Inform the user
+    const openai = (await joplin.settings.value('openaiApiKey')) as string;
+    const lambda = (await joplin.settings.value('lambdaApiKey')) as string;
+    const provided = [openai.trim() !== '', lambda.trim() !== ''];
+    const count = provided.filter(v => v).length;
+    if (count !== 1) {
       await joplin.views.dialogs.showMessageBox(
-        'Please enter an OpenAI API Key before disabling the local model.'
+        'Please configure exactly one: OpenAI API Key or Lambda API Key.'
       );
-    } else {
-        console.log(`Settings changed: useLocalModel=${useLocal}`);
-        await reindexAll();
-        console.log('Reindexing all notes after settings change');
+      return;
     }
+    console.log(`Settings changed: openai=${openai!==''}, lambda=${lambda!==''}`);
+    await reindexAll();
+    console.log('Reindexing all notes after settings change');
   });
 }

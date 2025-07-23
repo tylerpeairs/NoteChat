@@ -67,8 +67,11 @@ export async function queryIndex(query: string, k = 5): Promise<string[]> {
 
 // Upsert a single note
 export async function upsertNote(id: string): Promise<void> {
-  const settings = await joplin.settings.values(['openaiApiKey','useLocalModel']) as any;
-  const desired = (!!settings.openaiApiKey && !settings.useLocalModel) ? "openai" : "ollama";
+  const { openaiApiKey, lambdaApiKey } = await joplin.settings.values([
+    'openaiApiKey',
+    'lambdaApiKey',
+  ]) as any;
+  const desired = !!openaiApiKey ? "openai" : "lambda";
   if (currentProvider && currentProvider !== desired) {
     console.log(`upsertNote: provider changed, reindexing all`);
     await reindexAll();

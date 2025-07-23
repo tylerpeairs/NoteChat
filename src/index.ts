@@ -8,12 +8,15 @@ import { reindexAll, syncIndex } from './ai/embeddingService';
     // Register plugin settings
     await registerSettings();
 
-    const openaiApiKey = await joplin.settings.value('openaiApiKey');
-    const useLocalModel = await joplin.settings.value('useLocalModel');
+    const openaiApiKey = await joplin.settings.value('openaiApiKey') as string;
+    const lambdaApiKey = await joplin.settings.value('lambdaApiKey') as string;
 
-    console.log('Settings:', { openaiApiKey: openaiApiKey ? '[REDACTED]' : '', useLocalModel });
+    console.log('Settings:', {
+      openaiApiKey: !!openaiApiKey,
+      lambdaApiKey: !!lambdaApiKey,
+    });
 
-    (globalThis as any).NOTECHAT_SETTINGS = { openaiApiKey, useLocalModel, };
+    (globalThis as any).NOTECHAT_SETTINGS = { openaiApiKey, lambdaApiKey };
 
     // Register power-user commands
     await joplin.commands.register({

@@ -33,7 +33,7 @@ export interface Entry {
  * Structure of the on-disk cache file.
  */
 export interface CacheFile {
-  provider: 'openai' | 'ollama';
+  provider: 'openai' | 'lambda';
   entries: Entry[];
 }
 
