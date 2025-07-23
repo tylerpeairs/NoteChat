@@ -53,5 +53,5 @@ export function formatHistory(): string {
       const prefix = m.role === "user" ? "You" : "Assistant";
       return `[${time}] ${prefix}: ${m.content}`;
     })
-    .join("\n");
+    .join("\n\n\n");
 }

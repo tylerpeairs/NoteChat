@@ -8,6 +8,12 @@ export async function createJournalPanel(panelId: string) {
   console.log('createJournalPanel: injecting HTML into panel');
   await joplin.views.panels.setHtml(panel, `
   <style>
+    :root {
+      --panel-spacing: 16px;
+      --border-radius: 6px;
+      --transition-speed: 0.2s;
+    }
+
     /* Container spans full height and uses theme colors */
     #journal-panel {
       display: flex;
@@ -15,57 +21,139 @@ export async function createJournalPanel(panelId: string) {
       height: 100%;
       background: var(--background-color);
       color: var(--text-color);
+      font-family: var(--font-family);
     }
-    /* Header bar */
+
+    /* Header bar with subtle gradient */
     #journal-panel-header {
-      padding: 8px;
-      font-weight: bold;
+      padding: var(--panel-spacing);
+      font-weight: 600;
       border-bottom: 1px solid var(--margin-color);
       font-size: 1.1em;
+      background: linear-gradient(
+        to bottom,
+        var(--background-color),
+        var(--background-color-hover2)
+      );
     }
-    /* Body scrollable */
+
+    /* Body scrollable with padding */
     #journal-panel-body {
       flex: 1;
       overflow: auto;
-      padding: 8px;
+      padding: var(--panel-spacing);
+      display: flex;
+      flex-direction: column;
+      gap: var(--panel-spacing);
     }
-    /* Input styling */
+
+    /* Input container for better layout */
+    .input-container {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+
+    /* Input styling with focus effects */
     #journal-query {
       width: 100%;
       box-sizing: border-box;
-      height: 80px;
-      margin-bottom: 8px;
+      min-height: 100px;
       background: var(--background-color);
       color: var(--text-color);
       border: 1px solid var(--margin-color);
-      padding: 4px;
+      border-radius: var(--border-radius);
+      padding: 12px;
+      font-family: inherit;
+      font-size: 1em;
+      resize: vertical;
+      transition: border-color var(--transition-speed);
     }
-    /* Send button */
+
+    #journal-query:focus {
+      outline: none;
+      border-color: var(--primary-color);
+      box-shadow: 0 0 0 2px var(--primary-color-10);
+    }
+
+    /* Send button with hover effects */
     #journal-send {
-      padding: 6px 12px;
-      margin-bottom: 8px;
-      background: var(--button-background-color);
-      color: var(--button-text-color);
-      border: none;
+      align-self: flex-end;
+      padding: 10px 20px;
+      background: var(--joplin-background-color3);
+      color: var(--joplin-color);
+      border: 1px solid var(--joplin-border-color);
+      border-radius: var(--border-radius);
       cursor: pointer;
+      font-weight: 600;
+      font-size: 0.95em;
+      letter-spacing: 0.3px;
+      transition: all var(--transition-speed);
+      box-shadow: 0 1px 2px rgba(0,0,0,0.1);
     }
-    /* Output area */
+
+    #journal-send:hover {
+      background: var(--joplin-selected-color);
+      border-color: var(--joplin-selected-color);
+      color: var(--joplin-background-color);
+      transform: translateY(-1px);
+      box-shadow: 0 2px 4px rgba(0,0,0,0.15);
+    }
+
+    #journal-send:active {
+      transform: translateY(0);
+      box-shadow: 0 1px 2px rgba(0,0,0,0.1);
+    }
+
+    #journal-send:disabled {
+      opacity: 0.7;
+      cursor: not-allowed;
+      transform: none;
+      box-shadow: none;
+    }
+
+    /* Loading indicator */
+    #journal-loading {
+      display: none;
+      padding: 8px;
+      color: var(--color-muted);
+      font-style: italic;
+      text-align: center;
+    }
+
+    /* Output area with better formatting */
     #journal-output {
+      flex: 1;
       white-space: pre-wrap;
-      background: var(--background-color-highlight);
+      background: var(--background-color-hover2);
       color: var(--text-color);
       border: 1px solid var(--margin-color);
-      padding: 4px;
+      border-radius: var(--border-radius);
+      padding: var(--panel-spacing);
       overflow-y: auto;
+      font-size: 0.95em;
+      line-height: 1.5;
+    }
+
+    #journal-output:empty {
+      display: none;
     }
   </style>
   <div id="journal-panel">
     <div id="journal-panel-header">Journal Assistant</div>
     <div id="journal-panel-body">
-      <textarea id="journal-query" placeholder="Ask a question..."></textarea>
-      <button id="journal-send">Send</button>
-      <div id="journal-loading" style="display:none; padding:4px; font-style:italic;">
-        Loading…
+      <div class="input-container">
+        <textarea 
+          id="journal-query" 
+          placeholder="Ask any question about your notes..."
+          spellcheck="true"
+        ></textarea>
+        <button id="journal-send">
+          Ask Assistant
+        </button>
+      </div>
+      <div id="journal-loading">
+        Thinking...
       </div>
       <pre id="journal-output"></pre>
     </div>
