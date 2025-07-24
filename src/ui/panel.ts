@@ -1,5 +1,6 @@
 import joplin from 'api';
 import { handleQuery } from "../ai/chatCompletion";
+import { reindexAll } from "../ai/embeddingService";
 
 export async function createJournalPanel(panelId: string) {
   console.log('createJournalPanel: initializing panel creation');
@@ -41,6 +42,7 @@ export async function createJournalPanel(panelId: string) {
     #journal-panel-body {
       flex: 1;
       overflow: auto;
+      min-height: 0;
       padding: var(--panel-spacing);
       display: flex;
       flex-direction: column;
@@ -121,6 +123,15 @@ export async function createJournalPanel(panelId: string) {
       text-align: center;
     }
 
+    /* Reindex loading indicator */
+    #journal-reindex-loading {
+      display: none;
+      padding: 8px;
+      color: var(--color-muted);
+      font-style: italic;
+      text-align: center;
+    }
+
     /* Output area with better formatting */
     #journal-output {
       flex: 1;
@@ -131,6 +142,7 @@ export async function createJournalPanel(panelId: string) {
       border-radius: var(--border-radius);
       padding: var(--panel-spacing);
       overflow-y: auto;
+      min-height: 0;
       font-size: 0.95em;
       line-height: 1.5;
     }
@@ -140,7 +152,14 @@ export async function createJournalPanel(panelId: string) {
     }
   </style>
   <div id="journal-panel">
-    <div id="journal-panel-header">Journal Assistant</div>
+    <div id="journal-panel-header" style="display:flex; align-items:center; justify-content:space-between;">
+      <span>Journal Assistant</span>
+      <button id="journal-reindex" title="Reindex All"
+        style="background:none; border:none; cursor:pointer; font-weight:bold; font-size:1.5em; line-height:1; color:white;"
+        onclick="webviewApi.postMessage({ type: 'reindex' });">
+        R
+      </button>
+    </div>
     <div id="journal-panel-body">
       <div class="input-container">
         <textarea 
@@ -151,6 +170,9 @@ export async function createJournalPanel(panelId: string) {
         <button id="journal-send">
           Ask Assistant
         </button>
+        <div id="journal-reindex-loading" style="display:none; padding:8px; color: var(--color-muted); font-style: italic; text-align: center;">
+          Reindexing...
+        </div>
       </div>
       <div id="journal-loading">
         Thinking...
@@ -174,6 +196,16 @@ export async function registerPanelHandlers(panel: string) {
       const result = await handleQuery(message.text);
       console.log('registerPanelHandlers: returning result', result);
       return result;
+    }
+    if (message.type === 'reindex') {
+      console.log('registerPanelHandlers: reindex request received');
+      await reindexAll();
+      // Optionally scroll after reindex feedback
+      const outputPre = document.getElementById('journal-output');
+      if (outputPre) {
+        outputPre.scrollTop = outputPre.scrollHeight;
+      }
+      return { success: true };
     }
   });
 }

@@ -12,10 +12,6 @@ let index: Entry[] = [];
 
 // Full rebuild of the index
 export async function reindexAll(): Promise<void> {
-  if (await loadCache()) {
-    console.log("reindexAll: using cached index");
-    return;
-  }
   index = [];
   lastIndexedMap.clear();
   console.log("reindexAll: starting full rebuild");
