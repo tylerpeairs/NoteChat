@@ -18,7 +18,7 @@ export async function getCachePath(): Promise<string> {
 }
 
 // Load cache into memory; return true if loaded and valid, false otherwise
-export async function loadCache(): Promise<boolean> {
+export async function loadCache(): Promise<CacheFile | null> {
   const cachePath = await getCachePath();
   try {
     const text = await fs.readFile(cachePath, "utf-8");
@@ -34,7 +34,7 @@ export async function loadCache(): Promise<boolean> {
 
     if (cacheObj.provider !== desired) {
       console.log("cache: provider changed, invalidating cache");
-      return false;
+      return null;
     }
 
     // Populate lastIndexedMap and set currentProvider
@@ -42,10 +42,10 @@ export async function loadCache(): Promise<boolean> {
     cacheObj.entries.forEach(e => lastIndexedMap.set(e.id, e.updatedTime));
     currentProvider = cacheObj.provider;
     console.log(`cache: loaded ${cacheObj.entries.length} entries using ${currentProvider}`);
-    return true;
+    return cacheObj;
   } catch (e) {
     console.log("cache: no valid cache found, need full reindex");
-    return false;
+    return null;
   }
 }
 

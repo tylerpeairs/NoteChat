@@ -93,6 +93,16 @@ export async function upsertNote(id: string): Promise<void> {
 // Sync index: prune deleted & upsert changed
 export async function syncIndex(): Promise<void> {
   console.log("syncIndex: reconciling missing notes");
+  // Load cache into memory
+  const cacheFile = await loadCache();
+  if (cacheFile) {
+    console.log(`syncIndex: loaded ${cacheFile.entries.length} entries from cache`);
+    index = cacheFile.entries;
+  } else {
+    console.log("syncIndex: no cache, running full reindex");
+    await reindexAll();
+    return;
+  }
   // Prune deleted
   const allIds = new Set<string>();
   let page = 1;
