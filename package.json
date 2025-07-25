@@ -28,9 +28,6 @@
     "webpack-cli": "^4.10.0"
   },
   "dependencies": {
-    "@dqbd/tiktoken": "^1.0.21",
-    "chromadb": "^3.0.3",
-    "dotenv": "^16.5.0",
     "ollama": "^0.5.16",
     "openai": "^5.5.1"
   }
