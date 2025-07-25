@@ -75,6 +75,10 @@ These commands download and cache the models in `~/.ollama`.
 
 Feel free to open issues or pull requests on GitHub.
 
+## Privacy
+
+When you supply an `openaiApiKey` in the plugin settings, note content is transmitted to OpenAI for processing. Consider using the local model if you do not want your notes sent to OpenAI.
+
 ## License
 
 MIT
