@@ -9,8 +9,8 @@ import { ChatMessage } from "../models/interfaces";
 export async function handleQuery(question: string): Promise<string> {
   try {
     // Fetch latest settings
-    const { openaiApiKey, lambdaApiKey } =
-      await joplin.settings.values(['openaiApiKey', 'lambdaApiKey']) as any;
+    const { openaiApiKey, lambdaApiKey, systemPrompt, provider } =
+      await joplin.settings.values(['openaiApiKey', 'lambdaApiKey', 'systemPrompt', 'provider']) as any;
     console.log(`handleQuery: settings openaiApiKeySet=${!!openaiApiKey}, lambdaApiKeySet=${!!lambdaApiKey}`);
     const desiredProvider = !!openaiApiKey ? 'openai' : 'lambda';
     if (currentProvider && currentProvider !== desiredProvider) {
@@ -41,7 +41,7 @@ export async function handleQuery(question: string): Promise<string> {
         dangerouslyAllowBrowser: true,
       });
       const messages = [
-        { role: 'system', content: 'You are a helpful journal assistant. Use the notes provided to answer the question.' },
+        { role: 'system', content: systemPrompt },
         ...serializeHistory(),
         { role: 'user', content: `Notes:\n${context}\n\nQuestion: ${question}` },
       ];
@@ -56,7 +56,7 @@ export async function handleQuery(question: string): Promise<string> {
       // Build messages for OpenAI
       const openaiClient = new OpenAI({ apiKey: openaiApiKey, dangerouslyAllowBrowser: true });
       const messages: ChatCompletionMessageParam[] = [
-        { role: "system", content: "You are a helpful journal assistant. Use the notes provided to answer the question." },
+        { role: 'system', content: systemPrompt },
         ...serializeHistory(),
         { role: "user", content: `Notes:\n${context}\n\nQuestion: ${question}` },
       ];

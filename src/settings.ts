@@ -11,6 +11,19 @@ export default async function registerSettings() {
 
   // Register all plugin settings in one call
   await joplin.settings.registerSettings({
+    provider: {
+      value: 'openai',
+      type: SettingItemType.String,
+      section: 'noteChatSection',
+      public: true,
+      isEnum: true,
+      label: 'AI Provider',
+      description: 'Select which AI provider to use for chat completions.',
+      options: {
+        openai: 'OpenAI',
+        lambda: 'Lambda Labs',
+      },
+    },
     openaiApiKey: {
       value: '',
       type: SettingItemType.String,
@@ -25,7 +38,15 @@ export default async function registerSettings() {
       section: 'noteChatSection',
       public: true,
       label: 'Lambda Labs API Key',
-      description: 'Your Lambda Labs API key for remote Sonnet inference.',
+      description: 'Your Lambda Labs API key for remote LLama inference.',
+    },
+    systemPrompt: {
+      value: 'You are a helpful journal assistant. Use the notes provided to answer the question. Cite which note you used to answer the question.',
+      type: SettingItemType.String,
+      section: 'noteChatSection',
+      public: true,
+      label: 'System Prompt',
+      description: 'The system prompt to use for AI conversations.',
     },
   });
 
