@@ -48,6 +48,14 @@ export default async function registerSettings() {
       label: 'System Prompt',
       description: 'The system prompt to use for AI conversations.',
     },
+    nearestNeighbors: {
+      value: 5,
+      type: SettingItemType.Int,
+      section: 'noteChatSection',
+      public: true,
+      label: 'Nearest Neighbors',
+      description: 'Number of nearest neighbor notes to retrieve for embeddings (higher values increase accuracy and cost).',
+    },
   });
 
   // Validate settings on change

@@ -9,8 +9,8 @@ import { ChatMessage } from "../models/interfaces";
 export async function handleQuery(question: string): Promise<string> {
   try {
     // Fetch latest settings
-    const { openaiApiKey, lambdaApiKey, systemPrompt, provider } =
-      await joplin.settings.values(['openaiApiKey', 'lambdaApiKey', 'systemPrompt', 'provider']) as any;
+    const { openaiApiKey, lambdaApiKey, systemPrompt, provider, nearestNeighbors } =
+      await joplin.settings.values(['openaiApiKey', 'lambdaApiKey', 'systemPrompt', 'provider', 'nearestNeighbors']) as any;
     console.log(`handleQuery: settings openaiApiKeySet=${!!openaiApiKey}, lambdaApiKeySet=${!!lambdaApiKey}`);
     const desiredProvider = !!openaiApiKey ? 'openai' : 'lambda';
     if (currentProvider && currentProvider !== desiredProvider) {
@@ -25,7 +25,7 @@ export async function handleQuery(question: string): Promise<string> {
     console.log('chatCompletion: added user message to history', question);
 
     // Query the in-memory index for the top 5 related notes
-    const snippets = await queryIndex(question, 5);
+    const snippets = await queryIndex(question, nearestNeighbors);
     console.log('chatCompletion: retrieved snippets', snippets);
     const context = snippets.join("\n---\n");
     console.log('chatCompletion: built context', context);
