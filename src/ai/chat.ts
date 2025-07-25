@@ -33,22 +33,32 @@ export async function handleQuery(question: string): Promise<string> {
       const context = fullContext;
 
       if (useOpenAI && openaiClient) {
-        const chatResp = await openaiClient.chat.completions.create({
-          model: "gpt-3.5-turbo",
-          messages: [
-            { role: "system", content: "You are a helpful journal assistant. Use the notes provided to answer the question." },
-            { role: "user", content: `Notes:\n${context}\n\nQuestion: ${question}` },
-          ],
-        });
-        return chatResp.choices[0].message.content;
+        try {
+          const chatResp = await openaiClient.chat.completions.create({
+            model: "gpt-3.5-turbo",
+            messages: [
+              { role: "system", content: "You are a helpful journal assistant. Use the notes provided to answer the question." },
+              { role: "user", content: `Notes:\n${context}\n\nQuestion: ${question}` },
+            ],
+          });
+          return chatResp.choices[0].message.content;
+        } catch (error) {
+          console.error('handleQuery: OpenAI chat error', error);
+          return 'Error generating response. Please try again later.';
+        }
       } else {
-        const resp = await ollama.chat({
-          model: "llama3.2:1b",
-          messages: [
-            { role: "system", content: "You are a helpful journal assistant. Use the notes provided to answer the question." },
-            { role: "user", content: `Notes:\n${context}\n\nQuestion: ${question}` },
-          ],
-        });
-        return resp.message.content;
+        try {
+          const resp = await ollama.chat({
+            model: "llama3.2:1b",
+            messages: [
+              { role: "system", content: "You are a helpful journal assistant. Use the notes provided to answer the question." },
+              { role: "user", content: `Notes:\n${context}\n\nQuestion: ${question}` },
+            ],
+          });
+          return resp.message.content;
+        } catch (error) {
+          console.error('handleQuery: Ollama chat error', error);
+          return 'Error generating response. Please try again later.';
+        }
       }
 }
