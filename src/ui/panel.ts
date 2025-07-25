@@ -1,6 +1,7 @@
 import joplin from 'api';
 import { handleQuery } from "../ai/chatCompletion";
 import { reindexAll } from "../ai/embeddingService";
+import { clearHistory as clearMemory } from '../ai/chatHelper';
 
 export async function createJournalPanel(panelId: string) {
   console.log('createJournalPanel: initializing panel creation');
@@ -154,11 +155,16 @@ export async function createJournalPanel(panelId: string) {
   <div id="journal-panel">
     <div id="journal-panel-header" style="display:flex; align-items:center; justify-content:space-between;">
       <span>Journal Assistant</span>
-      <button id="journal-reindex" title="Reindex All"
-        style="background:none; border:none; cursor:pointer; font-weight:bold; font-size:1.5em; line-height:1; color:white;"
+      <button id="journal-reindex" title="Resync Index"
+        style="background:none; border:none; cursor:pointer; font-weight:bold; font-size:1em; line-height:1; color:currentColor;"
         onclick="webviewApi.postMessage({ type: 'reindex' });">
-        R
+        Reindex All
       </button>
+        <button id="journal-clear" title="Clear Memory"
+          style="background:none; border:none; cursor:pointer; font-weight:bold; font-size:1em; line-height:1; color:currentColor; margin-left:8px;"
+          onclick="webviewApi.postMessage({ type: 'clearMemory' });">
+          Clear Memory
+        </button>
     </div>
     <div id="journal-panel-body">
       <div class="input-container">
@@ -200,11 +206,11 @@ export async function registerPanelHandlers(panel: string) {
     if (message.type === 'reindex') {
       console.log('registerPanelHandlers: reindex request received');
       await reindexAll();
-      // Optionally scroll after reindex feedback
-      const outputPre = document.getElementById('journal-output');
-      if (outputPre) {
-        outputPre.scrollTop = outputPre.scrollHeight;
-      }
+      return { success: true };
+    }
+    if (message.type === 'clearMemory') {
+      console.log('registerPanelHandlers: clear memory request received');
+      await clearMemory();
       return { success: true };
     }
   });
