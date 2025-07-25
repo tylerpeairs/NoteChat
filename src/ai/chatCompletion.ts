@@ -75,9 +75,10 @@ export async function handleQuery(question: string): Promise<string> {
     addMessage("assistant", answer);
     console.log('chatCompletion: added user & assistant message, history length now', serializeHistory().length);
 
-    const formatted = formatHistory();
-    console.log('chatCompletion: returning string-formatted history', formatted);
-    return formatted;
+        // const formatted = formatHistory();
+    const formattedExchange = `> ${question}\n${answer}`;
+    console.log('chatCompletion: returning formatted single exchange', formattedExchange);
+    return formattedExchange;
   } catch (error) {
     console.error('handleQuery: unexpected error', error);
     throw error;
