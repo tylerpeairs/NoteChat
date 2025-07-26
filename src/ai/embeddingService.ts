@@ -36,7 +36,7 @@ export async function reindexAll(): Promise<void> {
     const embeddings = await embedTextBatch(texts);
     embeddings.forEach((vec, i) => {
       const note = items[i];
-      const combined = `${folderMap.get(note.parent_id) || ""} > ${note.title}\n\n${note.body}`;
+      const combined = `${folderMap.get(note.parent_id) || ""} > ${note.title}\n\n${note.body}`.slice(0, 2000);
       const entry: Entry = {
         id: note.id,
         embedding: normalize(vec),
