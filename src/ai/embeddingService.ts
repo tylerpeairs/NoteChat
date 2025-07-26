@@ -1,10 +1,8 @@
 import joplin from "api";
 import { embedText, embedTextBatch } from "./providers";
 import { normalize, cosineSimilarity } from "../models/math";
-const fs = require("fs").promises;
-const path = require("path");
 
-import { NoteMeta, FolderMeta, Entry, CacheFile } from "../models/interfaces";
+import { NoteMeta, FolderMeta, Entry } from "../models/interfaces";
 import { loadCache, saveCache, currentProvider, lastIndexedMap } from "../cache/cache";
 
 // Constants and in-memory state

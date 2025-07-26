@@ -1,4 +1,3 @@
-import joplin from "api";
 import { Ollama } from "ollama";
 import { normalize } from "../models/math";
 
