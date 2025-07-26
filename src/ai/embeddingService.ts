@@ -2,7 +2,7 @@ import joplin from "api";
 import { embedText, embedTextBatch } from "./providers";
 import { normalize, cosineSimilarity } from "../models/math";
 
-import { NoteMeta, FolderMeta, Entry } from "../models/interfaces";
+import { NoteMeta, FolderMeta, Entry, CacheFile } from "../models/interfaces";
 import { loadCache, saveCache, currentProvider, lastIndexedMap } from "../cache/cache";
 
 // Constants and in-memory state
@@ -17,10 +17,11 @@ export async function reindexAll(): Promise<void> {
   while (true) {
     const { items } = (await joplin.data.get(["notes"], {
       page,
-      limit: 50,
+      limit: 50,   
       fields: ["id", "title", "body", "updated_time", "parent_id"],
     })) as { items: NoteMeta[] };
     if (!items.length) break;
+    console.log(`reindexAll: processing page ${page} with IDs: ${items.map(n => n.id).join(', ')}`);
     const folderIds = Array.from(new Set(items.map(n => n.parent_id)));
     const folders = await Promise.all(
       folderIds.map(id => joplin.data.get(["folders", id], { fields: ["id", "title"] }) as Promise<FolderMeta>)
@@ -31,19 +32,23 @@ export async function reindexAll(): Promise<void> {
       return `${folder} > ${n.title}\n\n${n.body}`.slice(0, 2000);
     });
     console.log(`reindexAll: embedding page ${page} (${items.length} notes)`);
-    const embeddings = await embedTextBatch(texts);
-    embeddings.forEach((vec, i) => {
-      const note = items[i];
-      const combined = `${folderMap.get(note.parent_id) || ""} > ${note.title}\n\n${note.body}`.slice(0, 2000);
-      const entry: Entry = {
-        id: note.id,
-        embedding: normalize(vec),
-        text: combined,
-        updatedTime: note.updated_time,
-      };
-      index.push(entry);
-      lastIndexedMap.set(note.id, note.updated_time);
-    });
+    try {
+      const embeddings = await embedTextBatch(texts);
+      embeddings.forEach((vec, i) => {
+        const note = items[i];
+        const combined = `${folderMap.get(note.parent_id) || ""} > ${note.title}\n\n${note.body}`.slice(0, 2000);
+        const entry: Entry = {
+          id: note.id,
+          embedding: normalize(vec),
+          text: combined,
+          updatedTime: note.updated_time,
+        };
+        index.push(entry);
+        lastIndexedMap.set(note.id, note.updated_time);
+      });
+    } catch (err) {
+      console.warn('reindexAll: embedding batch failed on page', page, err);
+    }
     page++;
   }
   console.log(`reindexAll: completed ${page - 1} pages`);
@@ -88,7 +93,7 @@ export async function upsertNote(id: string): Promise<void> {
 export async function syncIndex(): Promise<void> {
   console.log("syncIndex: reconciling missing notes");
   // Load cache into memory
-  const cacheFile = await loadCache();
+  const cacheFile: CacheFile | null = await loadCache();
   if (cacheFile) {
     console.log(`syncIndex: loaded ${cacheFile.entries.length} entries from cache`);
     index = cacheFile.entries;
