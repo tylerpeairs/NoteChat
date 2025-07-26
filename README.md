@@ -1,13 +1,18 @@
 # Joplin NoteChat Plugin
 
-A Joplin plugin that enables you to chat with your notes using retrieval-augmented generation. This plugin can use Ollama for fully local embeddings and chat completion.
+Chat with your notes using AI, powered by local models and cloud services. NoteChat uses semantic search to find relevant notes and provides AI-generated responses based on your personal knowledge base.
 
-## Features
+## ✨ Features
 
-- In-memory semantic search over your Joplin notes using Ollama embeddings.
-- Local chat completion via Ollama’s Llama-3.2:1b model.
-- Automatic model download and caching via Ollama CLI.
-- Incremental indexing and persistent cache for fast startup.
+- **Smart Note Retrieval**
+  - Semantic search using embeddings
+  - Fast in-memory index with persistent cache
+  - Incremental updates - only process changed notes
+
+- **Flexible Chat Interface**
+  - Ask questions about your notes
+  - Get contextual responses based on your personal knowledge
+  - Maintains chat history for follow-up questions
 
 ## Prerequisites
 
@@ -33,9 +38,6 @@ Open a terminal and run:
 ```bash
 # Pull the embedding model (all-MiniLM-L6-v2)
 ollama pull all-minilm:22m-l6-v2-fp16
-
-# Pull the chat model (Llama-3.2 1B parameters)
-ollama pull llama3.2:1b
 ```
 
 These commands download and cache the models in `~/.ollama`.
@@ -44,18 +46,19 @@ These commands download and cache the models in `~/.ollama`.
 
 1. Clone or install the plugin into Joplin’s `plugins` folder.
 2. Launch Joplin and enable **NoteChat** in **Tools → Options → Plugins**.
-3. Start the Ollama server:
+3. Open the plugin settings (**Tools → Options → NoteChat**) to configure model and retrieval options as needed.
+4. Start the Ollama server:
 
-   ```bash
-   ollama serve
-   ```
+  ```bash
+  ollama serve
+  ```
 
-4. In Joplin, open the **Journal Assistant** panel (via **View → Toggle Plugin Panel**).
-5. Ask a question and press **Send**. The plugin will:
-   - Embed your query and notes using Ollama’s `/api/embed` endpoint.
-   - Perform retrieval over your note index.
-   - Send a RAG prompt to Ollama’s chat completion endpoint.
-   - Display the response inline.
+5. In Joplin, open the **Journal Assistant** panel (via **View → Toggle Plugin Panel**).
+6. Ask a question and press **Send**. The plugin will:
+  - Embed your query and notes using Ollama’s `/api/embed` endpoint.
+  - Perform retrieval over your note index.
+  - Send a RAG prompt to Ollama’s chat completion endpoint.
+  - Display the response inline.
 
 ## Troubleshooting
 
